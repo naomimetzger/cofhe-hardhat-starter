@@ -5,7 +5,16 @@ import "@cofhe/hardhat-plugin";
 import * as dotenv from "dotenv";
 import "./tasks";
 
-dotenv.config();
+dotenv.config({ path: `${__dirname}/.env`, override: true });
+
+const rawPrivateKey = (process.env.PRIVATE_KEY ?? "")
+  .trim()
+  .replace(/^['"]|['"]$/g, "");
+const privateKey = rawPrivateKey
+  ? rawPrivateKey.startsWith("0x")
+    ? rawPrivateKey
+    : `0x${rawPrivateKey}`
+  : undefined;
 
 const config: HardhatUserConfig = {
   cofhe: {
@@ -26,7 +35,7 @@ const config: HardhatUserConfig = {
     // Base Sepolia testnet configuration (not provided by plugin)
     "base-sepolia": {
       url: process.env.BASE_SEPOLIA_RPC_URL || "https://sepolia.base.org",
-      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
+      accounts: privateKey ? [privateKey] : [],
       chainId: 84532,
       gasMultiplier: 1.2,
       timeout: 60000,
