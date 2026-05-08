@@ -1,0 +1,224 @@
+:root {
+  color-scheme: dark;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #07090f;
+  color: #f5f7ff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: radial-gradient(circle at top, #1a1f3a, #07090f 60%);
+}
+
+.app-shell {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.top-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+  padding: 14px 18px;
+  border: 1px solid #2a2f48;
+  border-radius: 18px;
+  background: rgba(12, 15, 28, 0.85);
+  backdrop-filter: blur(10px);
+}
+
+.brand {
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+
+.nav-links {
+  display: flex;
+  gap: 14px;
+}
+
+.nav-links a {
+  color: #aeb7d8;
+  text-decoration: none;
+  padding: 8px 10px;
+  border-radius: 10px;
+}
+
+.nav-links a.active {
+  color: #fff;
+  background: #2a3157;
+}
+
+.content {
+  padding: 10px 2px;
+}
+
+.hero,
+.panel {
+  border: 1px solid #2a2f48;
+  border-radius: 24px;
+  background: rgba(12, 15, 28, 0.85);
+  padding: 30px;
+}
+
+.hero h1 {
+  font-size: clamp(2rem, 4vw, 3rem);
+  margin: 12px 0;
+  max-width: 14ch;
+}
+
+.chip {
+  display: inline-block;
+  background: #1f2a58;
+  padding: 6px 12px;
+  border-radius: 999px;
+  color: #d6ddff;
+  font-size: 0.85rem;
+}
+
+.subtext {
+  color: #aeb7d8;
+  line-height: 1.5;
+}
+
+.hero-actions,
+.footer-row,
+.inline-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.hero-actions {
+  margin-top: 24px;
+}
+
+.btn {
+  border: 0;
+  border-radius: 12px;
+  padding: 10px 16px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: linear-gradient(180deg, #8b7dff, #6f62e8);
+  color: #fff;
+}
+
+.btn-ghost {
+  background: #1d233f;
+  color: #dce2ff;
+}
+
+.panel h2 {
+  margin-top: 0;
+}
+
+.steps {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin: 18px 0;
+}
+
+.step {
+  text-align: center;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid #303962;
+  color: #9eadde;
+}
+
+.step.active {
+  border-color: #8b7dff;
+  color: #fff;
+}
+
+.form-grid {
+  display: grid;
+  gap: 16px;
+}
+
+label {
+  display: grid;
+  gap: 8px;
+  font-weight: 500;
+}
+
+input,
+textarea {
+  width: 100%;
+  border: 1px solid #2f3556;
+  background: #0f1330;
+  color: #fff;
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.list {
+  margin: 8px 0 0;
+  padding-left: 16px;
+  color: #c6cdef;
+}
+
+.card {
+  margin-top: 14px;
+  padding: 16px;
+  border-radius: 14px;
+  border: 1px solid #2d3353;
+  background: #0e1227;
+}
+
+.member-row {
+  margin: 8px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.progress-track {
+  margin-top: 8px;
+  width: 100%;
+  height: 10px;
+  border-radius: 999px;
+  background: #1b2141;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #7f70ff, #58c7ff);
+}
+
+.badge {
+  display: inline-block;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: #243066;
+  color: #dce3ff;
+  font-size: 0.8rem;
+}
+
+.review p,
+.status,
+.hint {
+  color: #b7c0e4;
+}
+
+.status {
+  margin-top: 14px;
+}
