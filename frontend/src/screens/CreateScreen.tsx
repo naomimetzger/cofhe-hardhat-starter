@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { isAddress } from "viem";
+import { getAddress, isAddress } from "viem";
 import { useAccount, usePublicClient, useWalletClient } from "wagmi";
+import { Link } from "react-router-dom";
+import { DEMO_CAPSULE_NAME, DEMO_MESSAGES, DEMO_THRESHOLD, useDemo } from "../demo/DemoContext";
 import { encryptUint64Input } from "../lib/cofhe";
 import { TIME_CAPSULE_ADDRESS, timeCapsuleAbi } from "../lib/contracts";
 
@@ -8,8 +10,18 @@ function toUnix(dateString: string) {
   return BigInt(Math.floor(new Date(dateString).getTime() / 1000));
 }
 
+function memberInitials(addr: string) {
+  return addr.slice(2, 4).toUpperCase();
+}
+
+function formatDatetimeLocal(d: Date) {
+  const pad = (n: number) => n.toString().padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 export function CreateScreen() {
   const { address } = useAccount();
+  const { active } = useDemo();
   const publicClient = usePublicClient();
   const { data: walletClient } = useWalletClient();
 
@@ -41,6 +53,20 @@ export function CreateScreen() {
     return () => window.clearInterval(timer);
   }, [cooldownLeft]);
 
+  useEffect(() => {
+    if (!active) return;
+    const addr =
+      address && isAddress(address)
+        ? getAddress(address)
+        : ("0x742d35Cc6634C0532925a3b844Bc454e4438f44e" as const);
+    const unlock = new Date(Date.now() - 60_000);
+    setCapsuleName(DEMO_CAPSULE_NAME);
+    setUnlockDate(formatDatetimeLocal(unlock));
+    setMembers([addr, addr, addr]);
+    setThreshold(DEMO_THRESHOLD);
+    setMessage(DEMO_MESSAGES[0]);
+  }, [active, address]);
+
   const messageAsUint64 = useMemo(() => {
     const encoded = new TextEncoder().encode(message);
     let value = 0n;
@@ -53,11 +79,11 @@ export function CreateScreen() {
   function addMember() {
     const parsed = memberInput.trim();
     if (!isAddress(parsed)) {
-      setStatus("Enter a valid wallet address.");
+      setStatus("enter a valid wallet address.");
       return;
     }
     if (members.includes(parsed)) {
-      setStatus("Member already added.");
+      setStatus("already in the group.");
       return;
     }
     setMembers((prev) => [...prev, parsed]);
@@ -67,25 +93,29 @@ export function CreateScreen() {
   }
 
   async function createAndSubmit() {
+    if (active) {
+      setStatus("demo mode is preview-only — no on-chain transactions. use exit demo in the nav for the real flow.");
+      return;
+    }
     if (!walletClient || !publicClient || !address) {
-      setStatus("Connect wallet first.");
+      setStatus("connect your wallet first.");
       return;
     }
     if (cooldownLeft > 0) {
-      setStatus(`Rate limit active. Please retry in ${cooldownLeft}s.`);
+      setStatus(`slow down — try again in ${cooldownLeft}s.`);
       return;
     }
     if (!isStep4Valid) {
-      setStatus("Please complete all 4 steps with valid values.");
+      setStatus("fill in every page first.");
       return;
     }
 
     setIsSubmitting(true);
-    setStatus("Encrypting message...");
+    setStatus("sealing your words…");
     try {
       const encryptedMsg = await encryptUint64Input(messageAsUint64, publicClient, walletClient);
 
-      setStatus("Creating capsule on-chain...");
+      setStatus("creating the capsule…");
       const nextId = (await publicClient.readContract({
         address: TIME_CAPSULE_ADDRESS,
         abi: timeCapsuleAbi,
@@ -102,7 +132,7 @@ export function CreateScreen() {
       });
       await publicClient.waitForTransactionReceipt({ hash: createHash });
 
-      setStatus("Submitting encrypted message...");
+      setStatus("tucking the message inside…");
       const submitHash = await walletClient.writeContract({
         address: TIME_CAPSULE_ADDRESS,
         abi: timeCapsuleAbi,
@@ -114,14 +144,14 @@ export function CreateScreen() {
       await publicClient.waitForTransactionReceipt({ hash: submitHash });
 
       localStorage.setItem(`capsule:${nextId}:members`, JSON.stringify(members));
-      setStatus(`Capsule #${nextId.toString()} created and encrypted message submitted.`);
+      setStatus(`all set — capsule #${nextId.toString()}. tell your friends the id ♡`);
     } catch (error: any) {
-      const message = String(error?.shortMessage || error?.message || "Transaction failed.");
-      if (message.toLowerCase().includes("rate limited")) {
+      const msg = String(error?.shortMessage || error?.message || "something went wrong.");
+      if (msg.toLowerCase().includes("rate limited")) {
         setCooldownLeft(60);
-        setStatus("Too many requests right now. Please wait 60 seconds, then try again.");
+        setStatus("the network asked for a breather. wait 60s and try again.");
       } else {
-        setStatus(message);
+        setStatus(msg);
       }
     } finally {
       setIsSubmitting(false);
@@ -137,9 +167,9 @@ export function CreateScreen() {
 
   function nextStep() {
     if (!canGoNext(step)) {
-      if (step === 1) setStatus("Enter capsule name and a valid unlock date.");
-      if (step === 2) setStatus("Add at least one member and set a valid threshold.");
-      if (step === 3) setStatus("Enter a message to encrypt.");
+      if (step === 1) setStatus("name this capsule and pick an unlock moment.");
+      if (step === 2) setStatus("add at least one friend and set how many need to show up.");
+      if (step === 3) setStatus("write something for the capsule.");
       return;
     }
     setStatus("");
@@ -147,149 +177,174 @@ export function CreateScreen() {
   }
 
   return (
-    <section className="panel">
-      <h2>Create Capsule</h2>
-      <p className="subtext">4-step flow: details, members, encrypted message, and on-chain confirm.</p>
+    <section className="flow-panel paper-card paper-card--gold-border">
+      <p className="page-counter">
+        page {step} of 4
+      </p>
 
-      <div className="steps">
-        {[1, 2, 3, 4].map((n) => (
-          <div key={n} className={`step ${n === step ? "active" : ""}`}>
-            Step {n}
-          </div>
-        ))}
-      </div>
+      {active && (
+        <div className="demo-banner">
+          you&apos;re in <strong>demo mode</strong> — this form is prefilled for fun; nothing hits the chain.{" "}
+          <Link to="/unlock">open the demo capsule →</Link>
+        </div>
+      )}
 
       {step === 1 && (
-        <div className="form-grid">
-          <label>
-            Capsule Name
-            <input value={capsuleName} onChange={(e) => setCapsuleName(e.target.value)} />
+        <>
+          <h2 className="h-display" style={{ fontSize: "1.85rem", margin: "0 0 1rem" }}>
+            what do we call this?
+          </h2>
+          <label className="field-label">name</label>
+          <input
+            className="diary-line-input"
+            value={capsuleName}
+            onChange={(e) => setCapsuleName(e.target.value)}
+            placeholder="e.g. summer 2026 crew"
+          />
+          <label className="field-label" style={{ marginTop: "1.25rem" }}>
+            unlock on
           </label>
-          <label>
-            Unlock Date
-            <input
-              type="datetime-local"
-              value={unlockDate}
-              onChange={(e) => setUnlockDate(e.target.value)}
-            />
-          </label>
-        </div>
+          <input
+            className="diary-line-input"
+            type="datetime-local"
+            value={unlockDate}
+            onChange={(e) => setUnlockDate(e.target.value)}
+          />
+        </>
       )}
 
       {step === 2 && (
-        <div className="form-grid">
-          <label>
-            Add Member Address
-            <div className="inline-row">
-              <input value={memberInput} onChange={(e) => setMemberInput(e.target.value)} />
-              <button className="btn btn-ghost" onClick={addMember}>
-                Add
-              </button>
-            </div>
-          </label>
-
-          <div>
-            <p>Members ({members.length})</p>
-            <ul className="list">
-              {members.map((m) => (
-                <li key={m}>{m}</li>
-              ))}
-            </ul>
+        <>
+          <h2 className="h-display" style={{ fontSize: "1.85rem", margin: "0 0 1rem" }}>
+            who&apos;s in the group?
+          </h2>
+          <label className="field-label">add a wallet</label>
+          <div className="member-row-create">
+            <input
+              className="diary-line-input"
+              style={{ flex: 1, minWidth: "12rem" }}
+              value={memberInput}
+              onChange={(e) => setMemberInput(e.target.value)}
+              placeholder="0x…"
+            />
+            <button type="button" className="btn-pill btn-pill--ghost" onClick={addMember}>
+              add ♡
+            </button>
           </div>
 
-          <label>
-            Threshold
-            <div className="inline-row">
-              <button
-                className="btn btn-ghost"
-                onClick={() => setThreshold((t) => Math.max(1, t - 1))}
-              >
-                -
-              </button>
-              <input
-                type="number"
-                min={1}
-                max={Math.max(1, members.length)}
-                value={threshold}
-                onChange={(e) => {
-                  const next = Number(e.target.value);
-                  if (!Number.isFinite(next)) return;
-                  setThreshold(Math.max(1, Math.min(Math.max(1, members.length), Math.floor(next))));
-                }}
-              />
-              <button
-                className="btn btn-ghost"
-                onClick={() => setThreshold((t) => Math.min(Math.max(1, members.length), t + 1))}
-              >
-                +
-              </button>
+          {members.length > 0 && (
+            <div className="member-row-create" style={{ marginTop: "1rem" }}>
+              {members.map((m) => (
+                <span key={m} className="avatar-chip" title={m}>
+                  {memberInitials(m)}
+                </span>
+              ))}
             </div>
-          </label>
-        </div>
+          )}
+
+          <div className="threshold-row">
+            <span className="field-label" style={{ margin: 0, fontSize: "1.15rem" }}>
+              how many need to show up?
+            </span>
+            <span aria-hidden>♡</span>
+            <button type="button" onClick={() => setThreshold((t) => Math.max(1, t - 1))}>
+              −
+            </button>
+            <input
+              type="number"
+              min={1}
+              max={Math.max(1, members.length)}
+              value={threshold}
+              onChange={(e) => {
+                const next = Number(e.target.value);
+                if (!Number.isFinite(next)) return;
+                setThreshold(Math.max(1, Math.min(Math.max(1, members.length), Math.floor(next))));
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => setThreshold((t) => Math.min(Math.max(1, members.length), t + 1))}
+            >
+              +
+            </button>
+            <span aria-hidden>♡</span>
+          </div>
+        </>
       )}
 
       {step === 3 && (
-        <div className="form-grid">
-          <label>
-            Message
+        <>
+          <h2 className="h-display" style={{ fontSize: "1.85rem", margin: "0 0 0.75rem" }}>
+            your turn. spill.
+          </h2>
+          <p className="note-above">
+            your friends won&apos;t see this until you all open it together 🔒
+          </p>
+          <div className="diary-paper">
             <textarea
-              rows={6}
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              placeholder="Write your time capsule message..."
+              placeholder="dear future us…"
             />
-          </label>
-          <p className="hint">
-            Message is compacted to 8 bytes for `euint64` and encrypted with `@cofhe/sdk` before
-            submit.
-          </p>
-        </div>
+          </div>
+        </>
       )}
 
       {step === 4 && (
-        <div className="review">
-          <p>
-            <strong>Name:</strong> {capsuleName}
-          </p>
-          <p>
-            <strong>Unlock:</strong> {unlockDate}
-          </p>
-          <p>
-            <strong>Members:</strong> {members.length}
-          </p>
-          <p>
-            <strong>Threshold:</strong> {threshold}
-          </p>
+        <>
+          <h2 className="h-display" style={{ fontSize: "1.85rem", margin: "0 0 1rem" }}>
+            ready to seal it?
+          </h2>
+          <ul className="summary-list">
+            <li>
+              <strong>name:</strong> {trimmedName || "—"}
+            </li>
+            <li>
+              <strong>opens:</strong> {unlockDate || "—"}
+            </li>
+            <li>
+              <strong>friends:</strong> {members.length}
+            </li>
+            <li>
+              <strong>threshold:</strong> {threshold} ♡
+            </li>
+          </ul>
           <button
-            className="btn btn-primary"
+            type="button"
+            className="btn-seal"
             disabled={isSubmitting || cooldownLeft > 0}
             onClick={createAndSubmit}
           >
-            {isSubmitting ? "Submitting..." : "Create Capsule"}
+            {isSubmitting ? "sealing…" : "seal the capsule 🔒"}
           </button>
+          <p className="seal-hint">
+            once sealed, nobody can read these — not even you — until it&apos;s time.
+          </p>
           {cooldownLeft > 0 && (
-            <p className="hint">Rate limited. You can retry in {cooldownLeft}s.</p>
+            <p className="seal-hint">easy — retry in {cooldownLeft}s.</p>
           )}
           {!isStep4Valid && (
-            <p className="hint">Please ensure all previous steps are complete and valid.</p>
+            <p className="seal-hint">go back if anything&apos;s missing.</p>
           )}
-        </div>
+        </>
       )}
 
-      <div className="footer-row">
-        <button className="btn btn-ghost" disabled={step === 1} onClick={() => setStep(step - 1)}>
-          Back
+      <div className="flow-footer">
+        <button type="button" className="btn-pill btn-pill--ghost" disabled={step === 1} onClick={() => setStep(step - 1)}>
+          ← back
         </button>
-        <button
-          className="btn btn-primary"
-          disabled={step === 4}
-          onClick={nextStep}
-        >
-          Next
+        <button type="button" className="btn-pill btn-pill--primary" disabled={step === 4} onClick={nextStep}>
+          next page →
         </button>
       </div>
 
-      {status && <p className="status">{status}</p>}
+      {status && <p className="status-msg">{status}</p>}
+
+      <p style={{ marginTop: "1.5rem", textAlign: "center" }}>
+        <Link to="/" className="body-text body-text--muted" style={{ fontFamily: "var(--font-display)", fontSize: "1.1rem" }}>
+          ← home
+        </Link>
+      </p>
     </section>
   );
 }
