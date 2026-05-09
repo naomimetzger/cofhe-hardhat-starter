@@ -20,6 +20,13 @@ function formatDatetimeLocal(d: Date) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+function formatUnlockDateLong(dateString: string) {
+  if (!dateString) return "—";
+  const d = new Date(dateString);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+}
+
 function SealedEnvelopeIllustration() {
   return (
     <div className="screen-illustration" aria-hidden>
@@ -233,7 +240,7 @@ export function CreateScreen() {
 
   return (
     <section className="flow-panel">
-      <SealedEnvelopeIllustration />
+      {step !== 4 && <SealedEnvelopeIllustration />}
       <div className="paper-card">
         <p className="page-counter">{step} / 4</p>
 
@@ -336,23 +343,18 @@ export function CreateScreen() {
         )}
 
         {step === 4 && (
-          <>
-            <h2 className="h-display">ready to seal it?</h2>
-            <ul className="summary-list">
-              <li>
-                <strong>name:</strong> {trimmedName || "—"}
-              </li>
-              <li>
-                <strong>opens:</strong> {unlockDate || "—"}
-              </li>
-              <li>
-                <strong>friends:</strong> {members.length}
-              </li>
-              <li>
-                <strong>threshold:</strong> {threshold}
-              </li>
-            </ul>
-            <div className="seal-envelope-stack">
+          <div className="seal-step">
+            <h2 className="seal-step__capsule-name">{trimmedName || "—"}</h2>
+            <div className="seal-step__details">
+              <p className="seal-step__line">opens on {formatUnlockDateLong(unlockDate)}</p>
+              <p className="seal-step__line">
+                {members.length} {members.length === 1 ? "friend" : "friends"}
+              </p>
+              <p className="seal-step__line">
+                {threshold} of you need to show up to open it
+              </p>
+            </div>
+            <div className="seal-envelope-stack seal-step__envelope">
               <img src="/envelope.png" alt="" className="seal-envelope-stack__envelope" />
               <img
                 src="/seal.png"
@@ -363,7 +365,7 @@ export function CreateScreen() {
             </div>
             <button
               type="button"
-              className="btn-seal"
+              className="btn-seal seal-step__seal-btn"
               disabled={isSubmitting || cooldownLeft > 0}
               onClick={handleSealClick}
             >
@@ -372,7 +374,7 @@ export function CreateScreen() {
             <p className="seal-hint">once sealed, nobody can read these until it&apos;s time.</p>
             {cooldownLeft > 0 && <p className="seal-hint">retry in {cooldownLeft}s.</p>}
             {!isStep4Valid && <p className="seal-hint">go back if anything is missing.</p>}
-          </>
+          </div>
         )}
 
         <div className="flow-footer">
