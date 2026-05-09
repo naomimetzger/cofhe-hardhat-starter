@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { isAddress } from "viem";
 import { useAccount, usePublicClient, useWalletClient } from "wagmi";
 import { Link } from "react-router-dom";
@@ -26,6 +26,14 @@ function shortenWalletAddress(addr: string | undefined) {
   return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
 }
 
+const SALUTATION_OPTIONS = [
+  "future us,",
+  "to my love,",
+  "future self,",
+  "birthday girl,",
+  "dear squad,",
+] as const;
+
 function SealedEnvelopeIllustration() {
   return (
     <div className="screen-illustration" aria-hidden>
@@ -49,6 +57,8 @@ export function CreateScreen() {
   const [members, setMembers] = useState<string[]>([]);
   const [threshold, setThreshold] = useState(1);
   const [letterBody, setLetterBody] = useState("");
+  const [salutationIdx, setSalutationIdx] = useState(0);
+  const [salutationOpaque, setSalutationOpaque] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [sealStampPlay, setSealStampPlay] = useState(false);
   const [didSealSucceed, setDidSealSucceed] = useState(false);
@@ -60,8 +70,9 @@ export function CreateScreen() {
   const trimmedName = capsuleName.trim();
   const composedMessage = useMemo(() => {
     const sign = shortenWalletAddress(address);
-    return `Dear future us,\n\n${letterBody}\n\nSincerely,\n${sign}`;
-  }, [letterBody, address]);
+    const phrase = SALUTATION_OPTIONS[salutationIdx];
+    return `Dear ${phrase}\n\n${letterBody}\n\nSincerely,\n${sign}`;
+  }, [letterBody, address, salutationIdx]);
   const unlockDateUnix = unlockDate ? Math.floor(new Date(unlockDate).getTime() / 1000) : NaN;
   const isStep1Valid = Boolean(trimmedName) && Number.isFinite(unlockDateUnix) && unlockDateUnix > 0;
   const isStep2Valid =
@@ -82,6 +93,43 @@ export function CreateScreen() {
     const t = window.setTimeout(() => setShareIdCopied(false), 2000);
     return () => window.clearTimeout(t);
   }, [shareIdCopied]);
+
+  const salutationCycleGen = useRef(0);
+
+  const runSalutationAutoCycle = useCallback((token: number) => {
+    window.setTimeout(() => {
+      if (salutationCycleGen.current !== token) return;
+      setSalutationOpaque(false);
+      window.setTimeout(() => {
+        if (salutationCycleGen.current !== token) return;
+        setSalutationIdx((i) => (i + 1) % SALUTATION_OPTIONS.length);
+        setSalutationOpaque(true);
+        runSalutationAutoCycle(token);
+      }, 400);
+    }, 2000);
+  }, []);
+
+  useEffect(() => {
+    if (step !== 3) return;
+    const token = ++salutationCycleGen.current;
+    setSalutationOpaque(true);
+    runSalutationAutoCycle(token);
+    return () => {
+      salutationCycleGen.current += 1;
+    };
+  }, [step, runSalutationAutoCycle]);
+
+  const advanceSalutation = useCallback(() => {
+    if (!salutationOpaque) return;
+    const token = ++salutationCycleGen.current;
+    setSalutationOpaque(false);
+    window.setTimeout(() => {
+      if (salutationCycleGen.current !== token) return;
+      setSalutationIdx((i) => (i + 1) % SALUTATION_OPTIONS.length);
+      setSalutationOpaque(true);
+      runSalutationAutoCycle(token);
+    }, 400);
+  }, [salutationOpaque, runSalutationAutoCycle]);
 
   const messageAsUint64 = useMemo(() => {
     const encoded = new TextEncoder().encode(composedMessage);
@@ -393,7 +441,22 @@ export function CreateScreen() {
             </p>
             <div className="letter-card">
               <p className="letter-card__salutation">
-                <strong>Dear</strong> future us,
+                <strong>Dear</strong>{" "}
+                <span
+                  role="button"
+                  tabIndex={0}
+                  className={`letter-card__salutation-cycle${salutationOpaque ? "" : " letter-card__salutation-cycle--hidden"}`}
+                  onClick={() => advanceSalutation()}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      advanceSalutation();
+                    }
+                  }}
+                  aria-label="Show next greeting"
+                >
+                  {SALUTATION_OPTIONS[salutationIdx]}
+                </span>
               </p>
               <textarea
                 className="letter-card__body"
