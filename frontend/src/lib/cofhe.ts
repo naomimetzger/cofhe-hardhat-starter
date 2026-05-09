@@ -1,27 +1,27 @@
 import { Encryptable } from "@cofhe/sdk";
+import { getChainById } from "@cofhe/sdk/chains";
+import { createCofheClient, createCofheConfig } from "@cofhe/sdk/web";
 import { baseSepolia } from "wagmi/chains";
 import type { PublicClient, WalletClient } from "viem";
 
-let sdkClient: any;
+let sdkClient: Awaited<ReturnType<typeof createCofheClient>> | undefined;
 
 async function getClient(publicClient: PublicClient, walletClient: WalletClient) {
   if (sdkClient) return sdkClient;
 
-  const sdk = await import("@cofhe/sdk/web");
-  const chains = await import("@cofhe/sdk/chains");
-
-  const chain = chains.getChainById(baseSepolia.id);
+  const chain = getChainById(baseSepolia.id);
   if (!chain) {
     throw new Error("Base Sepolia chain config not found in @cofhe/sdk.");
   }
 
-  const config = sdk.createCofheConfig({
+  const config = createCofheConfig({
     environment: "web",
     supportedChains: [chain],
   });
 
-  sdkClient = sdk.createCofheClient(config);
-  await sdkClient.connect(publicClient, walletClient);
+  sdkClient = createCofheClient(config);
+  // @cofhe/sdk bundles its own viem types; wagmi's clients are compatible at runtime.
+  await sdkClient.connect(publicClient as never, walletClient as never);
   return sdkClient;
 }
 

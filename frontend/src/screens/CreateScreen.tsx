@@ -136,7 +136,8 @@ export function CreateScreen() {
     let phase: "encryptUint64Input" | "readNextCapsuleId" | "createCapsule" | "submitMessage" =
       "encryptUint64Input";
     try {
-      const encryptedMsg = await encryptUint64Input(messageAsUint64, publicClient, walletClient);
+      const encryptedMsgRaw = await encryptUint64Input(messageAsUint64, publicClient, walletClient);
+      const encryptedMsg = encryptedMsgRaw as typeof encryptedMsgRaw & { signature: `0x${string}` };
 
       phase = "readNextCapsuleId";
       setStatus("creating the capsule…");
