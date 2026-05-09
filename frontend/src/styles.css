@@ -390,6 +390,41 @@ body {
   opacity: 0;
 }
 
+.letter-card__salutation-custom {
+  display: inline;
+  cursor: pointer;
+  opacity: 1;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.letter-card__salutation-custom:focus-visible {
+  outline: 2px solid #000;
+  outline-offset: 2px;
+}
+
+.letter-card__salutation-input {
+  display: inline-block;
+  vertical-align: baseline;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  font-weight: 400;
+  color: #000;
+  border: none;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.28);
+  border-radius: 0;
+  background: transparent;
+  padding: 0 0 2px;
+  margin: 0;
+  min-width: 10ch;
+  max-width: 100%;
+}
+
+.letter-card__salutation-input:focus {
+  outline: none;
+  border-bottom-color: #000;
+}
+
 .letter-card__body {
   display: block;
   width: 100%;
