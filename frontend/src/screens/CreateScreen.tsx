@@ -45,6 +45,8 @@ export function CreateScreen() {
   const [threshold, setThreshold] = useState(1);
   const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSealPressed, setIsSealPressed] = useState(false);
+  const [didSealSucceed, setDidSealSucceed] = useState(false);
   const [status, setStatus] = useState("");
   const [cooldownLeft, setCooldownLeft] = useState(0);
 
@@ -162,6 +164,7 @@ export function CreateScreen() {
 
       localStorage.setItem(`capsule:${nextId}:members`, JSON.stringify(members));
       setStatus(`all set — capsule #${nextId.toString()}. tell your friends the id ♡`);
+      setDidSealSucceed(true);
     } catch (error: unknown) {
       logTransactionError(`CreateScreen (${phase})`, error);
       const blob = errorTextBlob(error);
@@ -192,6 +195,27 @@ export function CreateScreen() {
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  function handleSealClick() {
+    setIsSealPressed(true);
+    window.setTimeout(() => setIsSealPressed(false), 300);
+    void createAndSubmit();
+  }
+
+  if (didSealSucceed) {
+    return (
+      <section className="flow-panel seal-success">
+        <img src="/seal.png" alt="wax seal" className="seal-success__image" />
+        <h1 className="seal-success__title">sealed. ✦</h1>
+        <p className="seal-success__text">your secrets are safe until it&apos;s time.</p>
+        <p style={{ marginTop: "1.5rem", textAlign: "center" }}>
+          <Link to="/" className="body-text body-text--muted">
+            ← home
+          </Link>
+        </p>
+      </section>
+    );
   }
 
   function canGoNext(currentStep: number) {
@@ -333,11 +357,18 @@ export function CreateScreen() {
                 <strong>threshold:</strong> {threshold}
               </li>
             </ul>
+            <div className="seal-preview-wrap">
+              <img
+                src="/seal.png"
+                alt="seal"
+                className={`seal-preview ${isSealPressed ? "seal-preview--pressed" : ""}`}
+              />
+            </div>
             <button
               type="button"
               className="btn-seal"
               disabled={isSubmitting || cooldownLeft > 0}
-              onClick={createAndSubmit}
+              onClick={handleSealClick}
             >
               {isSubmitting ? "sealing…" : "seal the capsule"}
             </button>

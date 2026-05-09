@@ -222,6 +222,34 @@ body {
   cursor: not-allowed;
 }
 
+.seal-preview-wrap {
+  display: flex;
+  justify-content: center;
+  margin: 0.75rem 0 1rem;
+}
+
+.seal-preview {
+  width: 120px;
+  height: auto;
+  transform-origin: center center;
+}
+
+.seal-preview--pressed {
+  animation: sealPress 0.3s ease;
+}
+
+@keyframes sealPress {
+  0% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(0.9);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
 .btn-open-together {
   font-family: var(--font-body);
   font-size: 1rem;
@@ -504,12 +532,22 @@ body {
 }
 
 .diary-page-card {
+  position: relative;
   border: var(--border);
   background: transparent;
   border-radius: 0;
   padding: 1.25rem 1.35rem;
   animation: pageIn 0.7s ease forwards;
   opacity: 0;
+}
+
+.message-seal {
+  position: absolute;
+  top: 0.65rem;
+  right: 0.65rem;
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
 }
 
 .diary-page-card:nth-child(1) {
@@ -566,6 +604,41 @@ body {
   text-align: center;
   margin: 2rem 0 1rem;
   opacity: 0.85;
+}
+
+.seal-success {
+  text-align: center;
+  animation: successFadeIn 0.7s ease forwards;
+}
+
+.seal-success__image {
+  width: 120px;
+  height: auto;
+  margin: 0 auto 1rem;
+  display: block;
+}
+
+.seal-success__title {
+  margin: 0 0 0.6rem;
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 8vw, 2.6rem);
+}
+
+.seal-success__text {
+  margin: 0;
+  font-size: 0.95rem;
+  opacity: 0.85;
+}
+
+@keyframes successFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .connect-rk {
