@@ -14,16 +14,16 @@ function memberInitials(addr: string) {
   return addr.slice(2, 4).toUpperCase();
 }
 
-function formatDatetimeLocal(d: Date) {
-  const pad = (n: number) => n.toString().padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
 function formatUnlockDateLong(dateString: string) {
   if (!dateString) return "—";
   const d = new Date(dateString);
   if (Number.isNaN(d.getTime())) return "—";
   return d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+}
+
+function shortenWalletAddress(addr: string | undefined) {
+  if (!addr) return "0x0000…0000";
+  return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
 }
 
 function SealedEnvelopeIllustration() {
@@ -48,7 +48,7 @@ export function CreateScreen() {
   const [memberInput, setMemberInput] = useState("");
   const [members, setMembers] = useState<string[]>([]);
   const [threshold, setThreshold] = useState(1);
-  const [message, setMessage] = useState("");
+  const [letterBody, setLetterBody] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [sealStampPlay, setSealStampPlay] = useState(false);
   const [didSealSucceed, setDidSealSucceed] = useState(false);
@@ -58,12 +58,15 @@ export function CreateScreen() {
   const [cooldownLeft, setCooldownLeft] = useState(0);
 
   const trimmedName = capsuleName.trim();
-  const trimmedMessage = message.trim();
+  const composedMessage = useMemo(() => {
+    const sign = shortenWalletAddress(address);
+    return `Dear future us,\n\n${letterBody}\n\nSincerely,\n${sign}`;
+  }, [letterBody, address]);
   const unlockDateUnix = unlockDate ? Math.floor(new Date(unlockDate).getTime() / 1000) : NaN;
   const isStep1Valid = Boolean(trimmedName) && Number.isFinite(unlockDateUnix) && unlockDateUnix > 0;
   const isStep2Valid =
     members.length > 0 && Number.isInteger(threshold) && threshold >= 1 && threshold <= members.length;
-  const isStep3Valid = Boolean(trimmedMessage);
+  const isStep3Valid = letterBody.trim().length > 0;
   const isStep4Valid = isStep1Valid && isStep2Valid && isStep3Valid;
 
   useEffect(() => {
@@ -81,13 +84,13 @@ export function CreateScreen() {
   }, [shareIdCopied]);
 
   const messageAsUint64 = useMemo(() => {
-    const encoded = new TextEncoder().encode(message);
+    const encoded = new TextEncoder().encode(composedMessage);
     let value = 0n;
     for (let i = 0; i < Math.min(encoded.length, 8); i++) {
       value = (value << 8n) + BigInt(encoded[i]);
     }
     return value;
-  }, [message]);
+  }, [composedMessage]);
 
   function addMember() {
     const parsed = memberInput.trim();
@@ -384,14 +387,27 @@ export function CreateScreen() {
 
         {step === 3 && (
           <>
-            <h2 className="h-display">your turn.</h2>
-            <p className="note-above">your friends won&apos;t see this until you all open it together.</p>
-            <div className="diary-paper">
+            <label className="letter-step-label">WRITE THE CARD</label>
+            <p className="letter-step-note body-text body-text--muted">
+              your friends won&apos;t see this until you all open it together.
+            </p>
+            <div className="letter-card">
+              <p className="letter-card__salutation">
+                <strong>Dear</strong> future us,
+              </p>
               <textarea
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                placeholder="dear future us…"
+                className="letter-card__body"
+                value={letterBody}
+                onChange={(e) => setLetterBody(e.target.value)}
+                aria-label="Your message to the group"
+                autoComplete="off"
+                spellCheck
               />
+              <p className="letter-card__signoff">
+                Sincerely,
+                <br />
+                {shortenWalletAddress(address)}
+              </p>
             </div>
           </>
         )}
