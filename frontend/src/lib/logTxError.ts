@@ -51,6 +51,11 @@ function findRevertDataHex(error: unknown): `0x${string}` | undefined {
   return undefined;
 }
 
+export function extractErrorSelector(error: unknown): string | undefined {
+  const revertData = findRevertDataHex(error);
+  return revertData ? extractRevertSelector(revertData) : undefined;
+}
+
 const LAYER_KEYS = ["data", "cause", "details", "shortMessage", "message", "metaMessages", "code", "status"] as const;
 
 function logOneLayer(label: string, layer: unknown, index: number) {
