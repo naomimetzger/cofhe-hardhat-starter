@@ -10,7 +10,7 @@ function NavChrome() {
   return (
     <header className="top-nav">
       <Link to="/" className="brand-link">
-        capsule ✿
+        capsule
       </Link>
       <div className="top-nav__right">
         {active && (

@@ -4,6 +4,7 @@ import { useAccount, usePublicClient, useWalletClient } from "wagmi";
 import { decryptCiphertextForTx } from "../lib/cofhe";
 import { TIME_CAPSULE_ADDRESS, timeCapsuleAbi } from "../lib/contracts";
 import { decodeUint64Message } from "../lib/messageCodec";
+import { logTransactionError } from "../lib/logTxError";
 import { useDemo } from "../demo/DemoContext";
 
 type CapsuleView = {
@@ -24,6 +25,18 @@ function memberInitials(addr: string) {
 
 const ZERO_HASH = "0x0000000000000000000000000000000000000000000000000000000000000000" as const;
 
+function OpenEnvelopeIllustration() {
+  return (
+    <div className="screen-illustration" aria-hidden>
+      <svg viewBox="0 0 180 110" className="screen-illustration__svg">
+        <rect x="18" y="35" width="144" height="63" rx="10" fill="none" stroke="currentColor" strokeWidth="2.3" />
+        <path d="M18 45l72 37 72-37" fill="none" stroke="currentColor" strokeWidth="2.3" />
+        <path d="M38 35l52-20 52 20" fill="none" stroke="currentColor" strokeWidth="2.3" />
+      </svg>
+    </div>
+  );
+}
+
 function UnlockDemoPanel() {
   const { state, unlockUnix, signSlot, openTogether, capsuleName, messages, threshold } = useDemo();
 
@@ -36,7 +49,8 @@ function UnlockDemoPanel() {
 
   return (
     <section className="flow-panel">
-      <h1 className="unlock-heading">time to open it 📖</h1>
+      <OpenEnvelopeIllustration />
+      <h1 className="unlock-heading">time to open it</h1>
       <p className="body-text body-text--muted" style={{ marginBottom: "1.25rem" }}>
         everyone who signed gets to read everything at once
       </p>
@@ -45,24 +59,15 @@ function UnlockDemoPanel() {
         demo ✦ pretend capsule — same address on all three chips so you can &quot;sign&quot; as each slot
       </p>
 
-      <div className="paper-card paper-card--gold-border">
-        <p className="h-display" style={{ fontSize: "1.5rem", margin: "0 0 0.5rem" }}>
+      <div className="paper-card">
+        <p className="h-display" style={{ margin: "0 0 0.5rem" }}>
           {capsuleName}
         </p>
         <p className="body-text body-text--muted" style={{ fontSize: "0.85rem" }}>
           opens {new Date(unlockUnix * 1000).toLocaleString()} (demo: already passed)
         </p>
 
-        <p className="body-text" style={{ margin: "1rem 0 0.35rem", fontSize: "0.95rem" }}>
-          {sigCount} of {threshold} friends have shown up
-        </p>
-        <div className="hearts-progress" aria-hidden>
-          {Array.from({ length: threshold }, (_, i) => (
-            <span key={i} className={`heart ${i < sigCount ? "heart--filled" : ""}`}>
-              ♡
-            </span>
-          ))}
-        </div>
+        <p className="progress-text">{sigCount} of {threshold} friends have arrived</p>
 
         {!thresholdMet && (
           <p className="waiting-msg">
@@ -76,10 +81,9 @@ function UnlockDemoPanel() {
           </p>
           <div className="member-row-create" style={{ gap: "0.45rem", alignItems: "stretch" }}>
             {[0, 1, 2].map((i) => (
-              <span
+              <div
                 key={i}
                 className={`member-tag ${state.signedSlots[i] ? "member-tag--signed" : ""}`}
-                style={{ ["--tag-tilt" as string]: `${(i % 3) - 1}deg` }}
               >
                 <span className="avatar-chip" style={{ width: 28, height: 28, fontSize: "0.65rem" }}>
                   {memberInitials(state.memberAddress)}
@@ -96,7 +100,7 @@ function UnlockDemoPanel() {
                     {state.busy === "sign" && state.busySlot === i ? "…" : "sign"}
                   </button>
                 )}
-              </span>
+              </div>
             ))}
           </div>
         </div>
@@ -114,11 +118,7 @@ function UnlockDemoPanel() {
       {state.revealed && (
         <div className="reveal-stack" key={state.revealEpoch}>
           {messages.map((msg, idx) => (
-            <article
-              key={`demo-${state.revealEpoch}-${idx}`}
-              className="diary-page-card"
-              style={{ ["--page-rot" as string]: `${((idx % 3) - 1) * 0.4}deg` }}
-            >
+            <article key={`demo-${state.revealEpoch}-${idx}`} className="diary-page-card">
               <p className="page-sender">{shortenAddress(state.memberAddress)} · voice {idx + 1}</p>
               <p className="page-message">{msg}</p>
               <p className="page-deco">✦</p>
@@ -246,8 +246,13 @@ function UnlockLivePanel() {
         signatures: Number(data[4]),
       });
       await refreshMemberFlags(id, cachedMembers);
-    } catch (error: any) {
-      setStatus(error?.shortMessage || error?.message || "couldn't find that capsule.");
+    } catch (error: unknown) {
+      logTransactionError("UnlockScreen (loadCapsule)", error);
+      setStatus(
+        (error as { shortMessage?: string })?.shortMessage ||
+          (error as { message?: string })?.message ||
+          "couldn't find that capsule."
+      );
     }
   }
 
@@ -284,8 +289,13 @@ function UnlockLivePanel() {
       await publicClient.waitForTransactionReceipt({ hash });
       await refreshCapsuleFromChain(members);
       setStatus("you showed up ♡");
-    } catch (error: any) {
-      setStatus(error?.shortMessage || error?.message || "signing didn't work.");
+    } catch (error: unknown) {
+      logTransactionError("UnlockScreen (signUnlock)", error);
+      setStatus(
+        (error as { shortMessage?: string })?.shortMessage ||
+          (error as { message?: string })?.message ||
+          "signing didn't work."
+      );
     }
   }
 
@@ -337,7 +347,8 @@ function UnlockLivePanel() {
         try {
           const s = await revealForMember(m);
           if (s !== undefined) next[m] = s;
-        } catch {
+        } catch (inner: unknown) {
+          logTransactionError(`UnlockScreen (revealForMember ${m})`, inner);
           const plain = (await publicClient.readContract({
             address: TIME_CAPSULE_ADDRESS,
             abi: timeCapsuleAbi,
@@ -350,8 +361,13 @@ function UnlockLivePanel() {
       setRevealed((prev) => ({ ...prev, ...next }));
       setRevealEpoch((e) => e + 1);
       setStatus("");
-    } catch (error: any) {
-      setStatus(error?.shortMessage || error?.message || "opening together failed.");
+    } catch (error: unknown) {
+      logTransactionError("UnlockScreen (openTogether)", error);
+      setStatus(
+        (error as { shortMessage?: string })?.shortMessage ||
+          (error as { message?: string })?.message ||
+          "opening together failed."
+      );
     } finally {
       setIsOpening(false);
     }
@@ -368,7 +384,8 @@ function UnlockLivePanel() {
 
   return (
     <section className="flow-panel">
-      <h1 className="unlock-heading">time to open it 📖</h1>
+      <OpenEnvelopeIllustration />
+      <h1 className="unlock-heading">time to open it</h1>
       <p className="body-text body-text--muted" style={{ marginBottom: "1.25rem" }}>
         everyone who signed gets to read everything at once
       </p>
@@ -391,24 +408,15 @@ function UnlockLivePanel() {
 
       {capsule && (
         <>
-          <div className="paper-card paper-card--gold-border">
-            <p className="h-display" style={{ fontSize: "1.5rem", margin: "0 0 0.5rem" }}>
+          <div className="paper-card">
+            <p className="h-display" style={{ margin: "0 0 0.5rem" }}>
               {capsule.name || `capsule #${capsuleId?.toString()}`}
             </p>
             <p className="body-text body-text--muted" style={{ fontSize: "0.85rem" }}>
               opens {new Date(Number(capsule.unlockDate) * 1000).toLocaleString()}
             </p>
 
-            <p className="body-text" style={{ margin: "1rem 0 0.35rem", fontSize: "0.95rem" }}>
-              {capsule.signatures} of {capsule.threshold} friends have shown up
-            </p>
-            <div className="hearts-progress" aria-hidden>
-              {Array.from({ length: capsule.threshold }, (_, i) => (
-                <span key={i} className={`heart ${i < progressHearts.filled ? "heart--filled" : ""}`}>
-                  ♡
-                </span>
-              ))}
-            </div>
+            <p className="progress-text">{progressHearts.filled} of {capsule.threshold} friends have arrived</p>
 
             {!capsule.unlocked && (
               <p className="waiting-msg">
@@ -422,18 +430,17 @@ function UnlockLivePanel() {
                   the crew
                 </p>
                 <div className="member-row-create" style={{ gap: "0.45rem" }}>
-                  {members.map((m, i) => (
-                    <span
+                  {members.map((m) => (
+                    <div
                       key={m}
                       className={`member-tag ${signedMap[m] ? "member-tag--signed" : ""}`}
-                      style={{ ["--tag-tilt" as string]: `${(i % 3) - 1}deg` }}
                     >
                       <span className="avatar-chip" style={{ width: 28, height: 28, fontSize: "0.65rem" }}>
                         {memberInitials(m)}
                       </span>
                       {shortenAddress(m)}
                       {signedMap[m] ? " ✓" : ""}
-                    </span>
+                    </div>
                   ))}
                 </div>
                 {address &&
@@ -472,12 +479,8 @@ function UnlockLivePanel() {
 
           {revealedMembers.length > 0 && (
             <div className="reveal-stack" key={revealEpoch}>
-              {revealedMembers.map((m, idx) => (
-                <article
-                  key={`${m}-${revealEpoch}`}
-                  className="diary-page-card"
-                  style={{ ["--page-rot" as string]: `${((idx % 3) - 1) * 0.4}deg` }}
-                >
+              {revealedMembers.map((m) => (
+                <article key={`${m}-${revealEpoch}`} className="diary-page-card">
                   <p className="page-sender">{shortenAddress(m)}</p>
                   <p className="page-message">{decodeUint64Message(BigInt(revealed[m]))}</p>
                   <p className="page-deco">✦</p>
