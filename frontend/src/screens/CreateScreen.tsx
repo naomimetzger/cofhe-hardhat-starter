@@ -159,6 +159,25 @@ export function CreateScreen() {
 
       phase = "submitMessage";
       setStatus("tucking the message inside…");
+      // CoFHE (Base Sepolia, etc.): `FHE.asEuint64` + verifier work needs more gas than many wallets
+      // default to. Estimating on-chain avoids "exceeds max transaction gas limit" from an
+      // undersized cap; headroom covers execution variance (see compatibility: cofhe-docs.fhenix.zone/.../compatibility).
+      let submitGas: bigint;
+      try {
+        const estimated = await publicClient.estimateContractGas({
+          account: address,
+          address: TIME_CAPSULE_ADDRESS,
+          abi: timeCapsuleAbi,
+          functionName: "submitMessage",
+          args: [nextId, encryptedMsg],
+        });
+        const bumped = (estimated * 3n) / 2n + 80_000n;
+        const ceiling = 12_000_000n;
+        submitGas = bumped > ceiling ? ceiling : bumped;
+      } catch {
+        submitGas = 3_000_000n;
+      }
+
       const submitHash = await walletClient.writeContract({
         address: TIME_CAPSULE_ADDRESS,
         abi: timeCapsuleAbi,
@@ -166,8 +185,7 @@ export function CreateScreen() {
         args: [nextId, encryptedMsg],
         account: address,
         chain: walletClient.chain,
-        // viem names this `gas`; sets the tx gas limit (500k for submitMessage on Base Sepolia).
-        gas: 500000n,
+        gas: submitGas,
       });
       await publicClient.waitForTransactionReceipt({ hash: submitHash });
 
