@@ -139,7 +139,7 @@ export function CreateScreen() {
         setSalutationOpaque(true);
         runSalutationAutoCycle(token);
       }, 400);
-    }, 2500);
+    }, 1500);
   }, []);
 
   useEffect(() => {
