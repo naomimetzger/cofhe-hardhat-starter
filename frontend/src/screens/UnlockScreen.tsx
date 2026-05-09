@@ -5,7 +5,6 @@ import { decryptCiphertextForTx } from "../lib/cofhe";
 import { TIME_CAPSULE_ADDRESS, timeCapsuleAbi } from "../lib/contracts";
 import { decodeUint64Message } from "../lib/messageCodec";
 import { logTransactionError } from "../lib/logTxError";
-import { useDemo } from "../demo/DemoContext";
 
 type CapsuleView = {
   name: string;
@@ -37,116 +36,7 @@ function OpenEnvelopeIllustration() {
   );
 }
 
-function UnlockDemoPanel() {
-  const { state, unlockUnix, signSlot, openTogether, capsuleName, messages, threshold } = useDemo();
-
-  const sigCount = state.signedSlots.filter(Boolean).length;
-  const thresholdMet = sigCount >= threshold;
-  const unlockTimePassed = Math.floor(Date.now() / 1000) >= unlockUnix;
-
-  const canOpenTogether =
-    thresholdMet && unlockTimePassed && !state.revealed && state.busy !== "open" && state.busy !== "sign";
-
-  return (
-    <section className="flow-panel">
-      <OpenEnvelopeIllustration />
-      <h1 className="unlock-heading">time to open it</h1>
-      <p className="body-text body-text--muted" style={{ marginBottom: "1.25rem" }}>
-        everyone who signed gets to read everything at once
-      </p>
-
-      <p className="body-text body-text--muted" style={{ fontSize: "0.85rem", marginBottom: "1rem" }}>
-        demo ✦ pretend capsule — same address on all three chips so you can &quot;sign&quot; as each slot
-      </p>
-
-      <div className="paper-card">
-        <p className="h-display" style={{ margin: "0 0 0.5rem" }}>
-          {capsuleName}
-        </p>
-        <p className="body-text body-text--muted" style={{ fontSize: "0.85rem" }}>
-          opens {new Date(unlockUnix * 1000).toLocaleString()} (demo: already passed)
-        </p>
-
-        <p className="progress-text">{sigCount} of {threshold} friends have arrived</p>
-
-        {!thresholdMet && (
-          <p className="waiting-msg">
-            waiting for the group… once {threshold} of you sign, everything unlocks at once
-          </p>
-        )}
-
-        <div style={{ marginTop: "1rem" }}>
-          <p className="field-label" style={{ fontSize: "1.1rem", marginBottom: "0.5rem" }}>
-            the crew
-          </p>
-          <div className="member-row-create" style={{ gap: "0.45rem", alignItems: "stretch" }}>
-            {[0, 1, 2].map((i) => (
-              <div
-                key={i}
-                className={`member-tag ${state.signedSlots[i] ? "member-tag--signed" : ""}`}
-              >
-                <span className="avatar-chip" style={{ width: 28, height: 28, fontSize: "0.65rem" }}>
-                  {memberInitials(state.memberAddress)}
-                </span>
-                {shortenAddress(state.memberAddress)}
-                <span style={{ marginLeft: "0.25rem" }}>{state.signedSlots[i] ? "✓" : ""}</span>
-                {!state.signedSlots[i] && (
-                  <button
-                    type="button"
-                    className="chip-sign-btn"
-                    disabled={state.busy !== null}
-                    onClick={() => signSlot(i)}
-                  >
-                    {state.busy === "sign" && state.busySlot === i ? "…" : "sign"}
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <button
-          type="button"
-          className="btn-open-together"
-          disabled={!canOpenTogether}
-          onClick={openTogether}
-        >
-          {state.busy === "open" ? "opening…" : "open together"}
-        </button>
-      </div>
-
-      {state.revealed && (
-        <div className="reveal-stack" key={state.revealEpoch}>
-          {messages.map((msg, idx) => (
-            <article key={`demo-${state.revealEpoch}-${idx}`} className="diary-page-card">
-              <p className="page-sender">{shortenAddress(state.memberAddress)} · voice {idx + 1}</p>
-              <p className="page-message">{msg}</p>
-              <p className="page-deco">✦</p>
-            </article>
-          ))}
-        </div>
-      )}
-
-      {state.revealed && (
-        <p className="reveal-closing">
-          that&apos;s everyone ♡ — {capsuleName} — opened {new Date().toLocaleDateString()}
-        </p>
-      )}
-
-      <p style={{ marginTop: "1.5rem", textAlign: "center" }}>
-        <Link
-          to="/"
-          className="body-text body-text--muted"
-          style={{ fontFamily: "var(--font-display)", fontSize: "1.1rem" }}
-        >
-          ← home
-        </Link>
-      </p>
-    </section>
-  );
-}
-
-function UnlockLivePanel() {
+export function UnlockScreen() {
   const { address } = useAccount();
   const publicClient = usePublicClient();
   const { data: walletClient } = useWalletClient();
@@ -511,12 +401,4 @@ function UnlockLivePanel() {
       </p>
     </section>
   );
-}
-
-export function UnlockScreen() {
-  const { active } = useDemo();
-  if (active) {
-    return <UnlockDemoPanel />;
-  }
-  return <UnlockLivePanel />;
 }

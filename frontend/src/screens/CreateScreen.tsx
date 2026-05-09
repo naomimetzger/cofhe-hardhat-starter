@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { getAddress, isAddress } from "viem";
+import { isAddress } from "viem";
 import { useAccount, usePublicClient, useWalletClient } from "wagmi";
 import { Link } from "react-router-dom";
-import { DEMO_CAPSULE_NAME, DEMO_MESSAGES, DEMO_THRESHOLD, useDemo } from "../demo/DemoContext";
 import { encryptUint64Input } from "../lib/cofhe";
 import { TIME_CAPSULE_ADDRESS, timeCapsuleAbi } from "../lib/contracts";
 import { errorLooksRateLimited, extractErrorSelector, logTransactionError } from "../lib/logTxError";
@@ -40,7 +39,6 @@ function SealedEnvelopeIllustration() {
 
 export function CreateScreen() {
   const { address } = useAccount();
-  const { active } = useDemo();
   const publicClient = usePublicClient();
   const { data: walletClient } = useWalletClient();
 
@@ -82,20 +80,6 @@ export function CreateScreen() {
     return () => window.clearTimeout(t);
   }, [shareIdCopied]);
 
-  useEffect(() => {
-    if (!active) return;
-    const addr =
-      address && isAddress(address)
-        ? getAddress(address)
-        : ("0x742d35Cc6634C0532925a3b844Bc454e4438f44e" as const);
-    const unlock = new Date(Date.now() - 60_000);
-    setCapsuleName(DEMO_CAPSULE_NAME);
-    setUnlockDate(formatDatetimeLocal(unlock));
-    setMembers([addr, addr, addr]);
-    setThreshold(DEMO_THRESHOLD);
-    setMessage(DEMO_MESSAGES[0]);
-  }, [active, address]);
-
   const messageAsUint64 = useMemo(() => {
     const encoded = new TextEncoder().encode(message);
     let value = 0n;
@@ -122,10 +106,6 @@ export function CreateScreen() {
   }
 
   async function createAndSubmit() {
-    if (active) {
-      setStatus("demo mode is preview-only — no on-chain transactions. use exit demo in the nav for the real flow.");
-      return;
-    }
     if (!walletClient || !publicClient || !address) {
       setStatus("connect your wallet first.");
       return;
@@ -324,13 +304,6 @@ export function CreateScreen() {
       {step !== 4 && <SealedEnvelopeIllustration />}
       <div className="paper-card">
         <p className="page-counter">{step} / 4</p>
-
-        {active && (
-          <div className="demo-banner">
-            you&apos;re in <strong>demo mode</strong> — this form is prefilled for preview only.{" "}
-            <Link to="/unlock">open the demo capsule</Link>
-          </div>
-        )}
 
         {step === 1 && (
           <>

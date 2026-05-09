@@ -1,6 +1,4 @@
 import { useNavigate } from "react-router-dom";
-import { useAccount } from "wagmi";
-import { useDemo } from "../demo/DemoContext";
 
 function HomeIllustration() {
   return (
@@ -12,13 +10,6 @@ function HomeIllustration() {
 
 export function HomeScreen() {
   const navigate = useNavigate();
-  const { address } = useAccount();
-  const { startDemo } = useDemo();
-
-  function tryDemo() {
-    startDemo(address);
-    navigate("/unlock");
-  }
 
   return (
     <>
@@ -37,10 +28,6 @@ export function HomeScreen() {
             open one
           </button>
         </div>
-
-        <button type="button" className="btn-try-demo" onClick={tryDemo}>
-          try the demo ✦
-        </button>
       </section>
 
       <footer className="site-footer">
@@ -48,7 +35,7 @@ export function HomeScreen() {
         <a href="https://twitter.com/afrochicksnft" target="_blank" rel="noreferrer">
           @afrochicksnft
         </a>{" "}
-        · powered by fhenix
+        · built with Fhenix CoFHE
       </footer>
     </>
   );
