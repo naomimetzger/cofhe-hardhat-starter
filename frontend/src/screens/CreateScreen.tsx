@@ -166,6 +166,8 @@ export function CreateScreen() {
         args: [nextId, encryptedMsg],
         account: address,
         chain: walletClient.chain,
+        // viem names this `gas`; sets the tx gas limit (500k for submitMessage on Base Sepolia).
+        gas: 500000n,
       });
       await publicClient.waitForTransactionReceipt({ hash: submitHash });
 
