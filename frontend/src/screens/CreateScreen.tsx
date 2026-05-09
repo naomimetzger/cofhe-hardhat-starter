@@ -54,6 +54,8 @@ export function CreateScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [sealStampPlay, setSealStampPlay] = useState(false);
   const [didSealSucceed, setDidSealSucceed] = useState(false);
+  const [sealedCapsuleId, setSealedCapsuleId] = useState<string | null>(null);
+  const [shareIdCopied, setShareIdCopied] = useState(false);
   const [status, setStatus] = useState("");
   const [cooldownLeft, setCooldownLeft] = useState(0);
 
@@ -73,6 +75,12 @@ export function CreateScreen() {
     }, 1000);
     return () => window.clearInterval(timer);
   }, [cooldownLeft]);
+
+  useEffect(() => {
+    if (!shareIdCopied) return;
+    const t = window.setTimeout(() => setShareIdCopied(false), 2000);
+    return () => window.clearTimeout(t);
+  }, [shareIdCopied]);
 
   useEffect(() => {
     if (!active) return;
@@ -191,6 +199,7 @@ export function CreateScreen() {
       await publicClient.waitForTransactionReceipt({ hash: submitHash });
 
       localStorage.setItem(`capsule:${nextId}:members`, JSON.stringify(members));
+      setSealedCapsuleId(nextId.toString());
       setStatus(`all set — capsule #${nextId.toString()}. tell your friends the id ♡`);
       setDidSealSucceed(true);
     } catch (error: unknown) {
@@ -223,6 +232,27 @@ export function CreateScreen() {
     void createAndSubmit();
   }
 
+  async function copySealedCapsuleId() {
+    if (!sealedCapsuleId) return;
+    try {
+      await navigator.clipboard.writeText(sealedCapsuleId);
+    } catch {
+      const ta = document.createElement("textarea");
+      ta.value = sealedCapsuleId;
+      ta.setAttribute("readonly", "");
+      ta.style.position = "fixed";
+      ta.style.left = "-9999px";
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand("copy");
+      } finally {
+        document.body.removeChild(ta);
+      }
+    }
+    setShareIdCopied(true);
+  }
+
   if (didSealSucceed) {
     return (
       <section className="flow-panel seal-success">
@@ -232,6 +262,36 @@ export function CreateScreen() {
         </div>
         <h1 className="seal-success__title">sealed. ✦</h1>
         <p className="seal-success__text">your secrets are safe until it&apos;s time.</p>
+        {sealedCapsuleId && (
+          <div className="seal-success-share">
+            <p className="seal-success-share__label">share this with your group</p>
+            <div className="seal-success-share__row">
+              <button
+                type="button"
+                className="seal-success-id-box"
+                onClick={() => void copySealedCapsuleId()}
+              >
+                <span className="seal-success-id-box__value">{sealedCapsuleId}</span>
+              </button>
+              <button
+                type="button"
+                className="seal-success-copy-btn"
+                onClick={() => void copySealedCapsuleId()}
+                aria-label="Copy capsule ID"
+              >
+                copy
+              </button>
+            </div>
+            {shareIdCopied && (
+              <p className="seal-success-share__copied" role="status">
+                copied!
+              </p>
+            )}
+            <p className="seal-success-share__hint">
+              they&apos;ll need this ID to find the capsule on the unlock screen
+            </p>
+          </div>
+        )}
         <p style={{ marginTop: "1.5rem", textAlign: "center" }}>
           <Link to="/" className="body-text body-text--muted">
             ← home
