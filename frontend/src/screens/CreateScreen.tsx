@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { getAddress, isAddress } from "viem";
 import { useAccount, usePublicClient, useWalletClient } from "wagmi";
 import { Link } from "react-router-dom";
@@ -6,7 +6,6 @@ import { DEMO_CAPSULE_NAME, DEMO_MESSAGES, DEMO_THRESHOLD, useDemo } from "../de
 import { encryptUint64Input } from "../lib/cofhe";
 import { TIME_CAPSULE_ADDRESS, timeCapsuleAbi } from "../lib/contracts";
 import { errorTextBlob, extractErrorSelector, logTransactionError } from "../lib/logTxError";
-import { LuxuryEnvelope, type LuxuryEnvelopeHandle } from "../components/LuxuryEnvelope";
 
 function toUnix(dateString: string) {
   return BigInt(Math.floor(new Date(dateString).getTime() / 1000));
@@ -37,7 +36,6 @@ export function CreateScreen() {
   const { active } = useDemo();
   const publicClient = usePublicClient();
   const { data: walletClient } = useWalletClient();
-  const envelopeRef = useRef<LuxuryEnvelopeHandle>(null);
 
   const [step, setStep] = useState(1);
   const [capsuleName, setCapsuleName] = useState("");
@@ -47,6 +45,7 @@ export function CreateScreen() {
   const [threshold, setThreshold] = useState(1);
   const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [sealStampPlay, setSealStampPlay] = useState(false);
   const [didSealSucceed, setDidSealSucceed] = useState(false);
   const [status, setStatus] = useState("");
   const [cooldownLeft, setCooldownLeft] = useState(0);
@@ -130,8 +129,6 @@ export function CreateScreen() {
     let phase: "encryptUint64Input" | "readNextCapsuleId" | "createCapsule" | "submitMessage" =
       "encryptUint64Input";
     try {
-      await envelopeRef.current?.playCloseAndStamp();
-
       const encryptedMsg = await encryptUint64Input(messageAsUint64, publicClient, walletClient);
 
       phase = "readNextCapsuleId";
@@ -169,7 +166,6 @@ export function CreateScreen() {
       setStatus(`all set — capsule #${nextId.toString()}. tell your friends the id ♡`);
       setDidSealSucceed(true);
     } catch (error: unknown) {
-      envelopeRef.current?.resetToOpen();
       logTransactionError(`CreateScreen (${phase})`, error);
       const blob = errorTextBlob(error);
       const selector = extractErrorSelector(error);
@@ -202,14 +198,16 @@ export function CreateScreen() {
   }
 
   function handleSealClick() {
+    setSealStampPlay(true);
     void createAndSubmit();
   }
 
   if (didSealSucceed) {
     return (
       <section className="flow-panel seal-success">
-        <div className="luxury-envelope-wrap luxury-envelope-wrap--success">
-          <LuxuryEnvelope variant="sealed" />
+        <div className="seal-envelope-stack seal-envelope-stack--success">
+          <img src="/envelope.png" alt="" className="seal-envelope-stack__envelope" />
+          <img src="/seal.png" alt="wax seal" className="seal-envelope-stack__seal" />
         </div>
         <h1 className="seal-success__title">sealed. ✦</h1>
         <p className="seal-success__text">your secrets are safe until it&apos;s time.</p>
@@ -361,8 +359,14 @@ export function CreateScreen() {
                 <strong>threshold:</strong> {threshold}
               </li>
             </ul>
-            <div className="luxury-envelope-wrap">
-              <LuxuryEnvelope ref={envelopeRef} variant="interactive" />
+            <div className="seal-envelope-stack">
+              <img src="/envelope.png" alt="" className="seal-envelope-stack__envelope" />
+              <img
+                src="/seal.png"
+                alt="wax seal"
+                className={`seal-envelope-stack__seal${sealStampPlay ? " seal-envelope-stack__seal--stamp" : ""}`}
+                onAnimationEnd={() => setSealStampPlay(false)}
+              />
             </div>
             <button
               type="button"
