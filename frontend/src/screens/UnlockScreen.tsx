@@ -119,7 +119,6 @@ function UnlockDemoPanel() {
         <div className="reveal-stack" key={state.revealEpoch}>
           {messages.map((msg, idx) => (
             <article key={`demo-${state.revealEpoch}-${idx}`} className="diary-page-card">
-              <img src="/seal.png" alt="" className="message-seal" aria-hidden />
               <p className="page-sender">{shortenAddress(state.memberAddress)} · voice {idx + 1}</p>
               <p className="page-message">{msg}</p>
               <p className="page-deco">✦</p>
@@ -482,7 +481,6 @@ function UnlockLivePanel() {
             <div className="reveal-stack" key={revealEpoch}>
               {revealedMembers.map((m) => (
                 <article key={`${m}-${revealEpoch}`} className="diary-page-card">
-                  <img src="/seal.png" alt="" className="message-seal" aria-hidden />
                   <p className="page-sender">{shortenAddress(m)}</p>
                   <p className="page-message">{decodeUint64Message(BigInt(revealed[m]))}</p>
                   <p className="page-deco">✦</p>

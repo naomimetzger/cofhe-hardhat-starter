@@ -5,7 +5,7 @@ import { Link } from "react-router-dom";
 import { DEMO_CAPSULE_NAME, DEMO_MESSAGES, DEMO_THRESHOLD, useDemo } from "../demo/DemoContext";
 import { encryptUint64Input } from "../lib/cofhe";
 import { TIME_CAPSULE_ADDRESS, timeCapsuleAbi } from "../lib/contracts";
-import { errorTextBlob, extractErrorSelector, logTransactionError } from "../lib/logTxError";
+import { errorLooksRateLimited, extractErrorSelector, logTransactionError } from "../lib/logTxError";
 
 function toUnix(dateString: string) {
   return BigInt(Math.floor(new Date(dateString).getTime() / 1000));
@@ -167,24 +167,17 @@ export function CreateScreen() {
       setDidSealSucceed(true);
     } catch (error: unknown) {
       logTransactionError(`CreateScreen (${phase})`, error);
-      const blob = errorTextBlob(error);
       const selector = extractErrorSelector(error);
       const msg = String(
         (error as { shortMessage?: string })?.shortMessage ||
           (error as { message?: string })?.message ||
           "something went wrong."
       );
-      const looksRateLimited =
-        phase === "submitMessage" &&
-        (blob.includes("rate limit") ||
-          blob.includes("rate limited") ||
-          blob.includes("too many requests") ||
-          blob.includes("429"));
-      if (looksRateLimited) {
+      if (errorLooksRateLimited(error)) {
         setCooldownLeft(60);
         const selectorHint = selector ? ` selector: ${selector}.` : "";
         setStatus(
-          `the network asked for a breather during submitMessage. wait 60s and try again.${selectorHint} check console for full cause/data and run npx cofhe-errors <selector>.`
+          `the RPC endpoint is rate limiting requests (failed during ${phase}). wait 60s and try again, or switch to a less busy RPC in your wallet/network settings.${selectorHint} check console for full cause/data and run npx cofhe-errors <selector> if a revert selector is shown.`
         );
       } else {
         const selectorHint = selector ? ` selector: ${selector}.` : "";

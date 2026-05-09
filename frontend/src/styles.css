@@ -310,9 +310,12 @@ body {
   animation: floatLock 4.2s ease-in-out infinite;
 }
 
-.hero-illustration__svg {
-  width: min(230px, 72vw);
-  color: var(--ink);
+.hero-illustration__img {
+  display: block;
+  width: 280px;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
 }
 
 @keyframes floatLock {
@@ -551,22 +554,12 @@ body {
 }
 
 .diary-page-card {
-  position: relative;
   border: var(--border);
   background: transparent;
   border-radius: 0;
   padding: 1.25rem 1.35rem;
   animation: pageIn 0.7s ease forwards;
   opacity: 0;
-}
-
-.message-seal {
-  position: absolute;
-  top: 0.65rem;
-  right: 0.65rem;
-  width: 40px;
-  height: 40px;
-  object-fit: contain;
 }
 
 .diary-page-card:nth-child(1) {

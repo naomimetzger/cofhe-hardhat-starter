@@ -37,6 +37,19 @@ export function errorTextBlob(error: unknown): string {
   return collectErrorText(error).toLowerCase();
 }
 
+/** RPC / gateway throttling surfaced as an error (any phase: reads, writes, or “revert reason” text). */
+export function errorLooksRateLimited(error: unknown): boolean {
+  const blob = errorTextBlob(error);
+  return (
+    blob.includes("rate limit") ||
+    blob.includes("rate limited") ||
+    blob.includes("too many requests") ||
+    blob.includes("throttl") ||
+    blob.includes("429") ||
+    blob.includes("quota exceeded")
+  );
+}
+
 function findRevertDataHex(error: unknown): `0x${string}` | undefined {
   let cur: unknown = error;
   const seen = new Set<unknown>();

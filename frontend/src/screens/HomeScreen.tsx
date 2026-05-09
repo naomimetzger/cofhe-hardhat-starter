@@ -5,12 +5,7 @@ import { useDemo } from "../demo/DemoContext";
 function HomeIllustration() {
   return (
     <div className="hero-illustration" aria-hidden>
-      <svg viewBox="0 0 220 220" className="hero-illustration__svg">
-        <rect x="52" y="96" width="116" height="92" rx="14" fill="none" stroke="currentColor" strokeWidth="2.5" />
-        <path d="M78 96V73c0-18 14-32 32-32s32 14 32 32v23" fill="none" stroke="currentColor" strokeWidth="2.5" />
-        <path d="M74 128h72v42H74z" fill="none" stroke="currentColor" strokeWidth="2.5" />
-        <path d="M74 128l36 24 36-24" fill="none" stroke="currentColor" strokeWidth="2.5" />
-      </svg>
+      <img src="/envelogo.png" alt="" className="hero-illustration__img" />
     </div>
   );
 }
