@@ -26,13 +26,13 @@ function shortenWalletAddress(addr: string | undefined) {
   return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
 }
 
-const SALUTATION_OPTIONS = [
-  "future us,",
-  "to my love,",
-  "future self,",
-  "birthday girl,",
-  "dear squad,",
-] as const;
+function stripLeadingDear(phrase: string): string {
+  return phrase.replace(/^\s*dear\s+/i, "").trim();
+}
+
+const SALUTATION_OPTIONS = ["future us,", "to my love,", "future self,", "birthday girl,", "the squad,"].map(
+  stripLeadingDear
+);
 
 function SealedEnvelopeIllustration() {
   return (
@@ -63,6 +63,8 @@ export function CreateScreen() {
   const [salutationEditing, setSalutationEditing] = useState(false);
   const [salutationCustom, setSalutationCustom] = useState("");
   const [salutationDraft, setSalutationDraft] = useState("");
+  /** While editing with empty draft, encrypted preview still uses this suffix */
+  const [salutationEditFallback, setSalutationEditFallback] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [sealStampPlay, setSealStampPlay] = useState(false);
   const [didSealSucceed, setDidSealSucceed] = useState(false);
@@ -72,17 +74,20 @@ export function CreateScreen() {
   const [cooldownLeft, setCooldownLeft] = useState(0);
 
   const trimmedName = capsuleName.trim();
-  const salutationPhrase = useMemo(() => {
-    if (salutationEditing) return salutationDraft;
+  const salutationPhraseRaw = useMemo(() => {
+    if (salutationEditing) return salutationDraft.trim() || salutationEditFallback;
     if (salutationLocked) return salutationCustom;
     return SALUTATION_OPTIONS[salutationIdx];
   }, [
     salutationEditing,
     salutationDraft,
+    salutationEditFallback,
     salutationLocked,
     salutationCustom,
     salutationIdx,
   ]);
+
+  const salutationPhrase = useMemo(() => stripLeadingDear(salutationPhraseRaw), [salutationPhraseRaw]);
 
   const composedMessage = useMemo(() => {
     const sign = shortenWalletAddress(address);
@@ -149,21 +154,39 @@ export function CreateScreen() {
 
   useEffect(() => {
     if (!salutationEditing) return;
-    queueMicrotask(() => salutationInputRef.current?.focus());
+    const id = window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        const el = salutationInputRef.current;
+        if (!el) return;
+        el.focus({ preventScroll: true });
+      });
+    });
+    return () => window.cancelAnimationFrame(id);
   }, [salutationEditing]);
 
   function beginSalutationEdit(fromCustom: boolean) {
     salutationCycleGen.current += 1;
-    setSalutationDraft(fromCustom ? salutationCustom : SALUTATION_OPTIONS[salutationIdx]);
+    salutationEditingRef.current = true;
+    if (fromCustom) {
+      const suffix = stripLeadingDear(salutationCustom);
+      setSalutationEditFallback(suffix);
+      setSalutationDraft(suffix);
+    } else {
+      setSalutationEditFallback(SALUTATION_OPTIONS[salutationIdx]);
+      setSalutationDraft("");
+    }
     setSalutationEditing(true);
   }
 
   function commitSalutationEdit() {
     const trimmed = salutationDraft.trim();
-    const saved = trimmed || "future us,";
-    setSalutationCustom(saved);
+    const saved = stripLeadingDear(trimmed || salutationEditFallback || "future us,");
+    const normalized = saved || "future us,";
+    setSalutationCustom(normalized);
     setSalutationLocked(true);
     setSalutationEditing(false);
+    salutationEditingRef.current = false;
+    salutationLockedRef.current = true;
     salutationCycleGen.current += 1;
   }
 
@@ -477,7 +500,7 @@ export function CreateScreen() {
             </p>
             <div className="letter-card">
               <p className="letter-card__salutation">
-                <strong>Dear</strong>{" "}
+                <strong className="letter-card__salutation-dear">Dear</strong>
                 {salutationEditing ? (
                   <input
                     ref={salutationInputRef}
@@ -492,43 +515,29 @@ export function CreateScreen() {
                         salutationInputRef.current?.blur();
                       }
                     }}
-                    aria-label="Greeting after Dear"
+                    placeholder="type a name..."
+                    aria-label="Name or greeting after Dear"
                     autoComplete="off"
                     spellCheck={false}
-                    size={Math.max(salutationDraft.length, 14)}
                   />
                 ) : salutationLocked ? (
-                  <span
-                    role="button"
-                    tabIndex={0}
+                  <button
+                    type="button"
                     className="letter-card__salutation-custom"
                     onClick={() => beginSalutationEdit(true)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        beginSalutationEdit(true);
-                      }
-                    }}
                     aria-label="Edit greeting"
                   >
                     {salutationCustom}
-                  </span>
+                  </button>
                 ) : (
-                  <span
-                    role="button"
-                    tabIndex={0}
+                  <button
+                    type="button"
                     className={`letter-card__salutation-cycle${salutationOpaque ? "" : " letter-card__salutation-cycle--hidden"}`}
                     onClick={() => beginSalutationEdit(false)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        beginSalutationEdit(false);
-                      }
-                    }}
                     aria-label="Customize greeting"
                   >
                     {SALUTATION_OPTIONS[salutationIdx]}
-                  </span>
+                  </button>
                 )}
               </p>
               <textarea
